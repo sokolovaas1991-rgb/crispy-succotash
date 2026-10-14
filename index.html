@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чек-лист проверки актива СП / ПБ</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#20252b;background:#f4f6f8}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 14px 48px}
+main{max-width:860px;margin:0 auto}
+header{background:#fff;border:1px solid #e0e5ea;border-radius:16px;padding:22px;margin-bottom:16px}
+h1{font-size:clamp(22px,4vw,30px);line-height:1.2;margin:0 0 8px}
+.sub{color:#5d6874;font-size:14px;margin:0}
+.progress-wrap{margin-top:18px}
+.progress-label{display:flex;justify-content:space-between;font-size:13px;color:#5d6874;margin-bottom:7px}
+.progress{height:8px;background:#e8edf2;border-radius:99px;overflow:hidden}
+.progress-bar{height:100%;width:0;background:#276749;transition:width .15s}
+section{background:#fff;border:1px solid #e0e5ea;border-radius:14px;margin:12px 0;padding:16px 18px}
+h2{font-size:17px;margin:0 0 12px}
+label.item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;line-height:1.35;cursor:pointer}
+input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin:1px 0 0;accent-color:#276749;cursor:pointer}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+button{border:1px solid #cbd3dc;border-radius:10px;background:#fff;padding:10px 14px;font:inherit;cursor:pointer}
+button.primary{background:#20252b;color:white;border-color:#20252b}
+button:focus-visible,input:focus-visible{outline:3px solid #8ab4f8;outline-offset:2px}
+footer{font-size:13px;color:#5d6874;padding:4px 2px}
+@media print{body{background:#fff;padding:0}header,section{border:1px solid #bbb;break-inside:avoid}.actions,.progress-wrap,.sub{display:none}section{margin:8px 0;padding:10px 14px}label.item{padding:4px 0}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Чек-лист проверки актива СП / ПБ</h1>
+  <p class="sub">Отмечайте пункты по ходу проверки. Отметки хранятся только в открытой странице и сбрасываются после обновления.</p>
+  <div class="progress-wrap">
+    <div class="progress-label"><span>Выполнено</span><strong id="count">0 из 0</strong></div>
+    <div class="progress"><div class="progress-bar" id="bar"></div></div>
+  </div>
+</header>
+<div id="checklist"></div>
+<div class="actions">
+  <button class="primary" id="reset">Сбросить отметки</button>
+  <button id="print">Печать / сохранить в PDF</button>
+</div>
+<footer>Важно: проверяйте не только наличие данных, но и их соответствие исходным материалам.</footer>
+</main>
+<script>
+const groups = [
+["1. НАРЕЗКА",[
+"Дом / корпус / секция соответствуют исходнику","Этажность и количество секций корректны","Все планировки заведены, дублей нет","Контуры помещений корректны","Площадь и количество комнат соответствуют исходнику","Направление окон корректно","Уникальные типы планировок заведены"]],
+["2. НУМЕРАЦИЯ / КВАРТИРОГРАФИЯ",[
+"Нумерация соответствует исходнику","Нет пропущенных / дублирующихся номеров","Направление нумерации корректно","Квартиры находятся на своих местах","Этажи и планировки соответствуют","Нет пропущенных / лишних квартир"]],
+["3. ХАРАКТЕРИСТИКИ",[
+"Площадь","Количество комнат","Направление окон","Все уникальные планировки имеют характеристики"]],
+["4. СТАТУСЫ И ЦЕНЫ",[
+"Статус каждого помещения соответствует исходнику","Продано / доступно / другое состояние указано корректно","Цены соответствуют исходным данным","Нет очевидных ошибок в ценах","Цена соответствует статусу помещения"]],
+["5. РОЗА ВЕТРОВ / СЕВЕР",[
+"Направление на север указано корректно","Роза ветров проверена на планах","Направление окон после установки розы ветров корректно","По всему дому выполнено необходимое условие для отметки «Направление на север указано»","Если исходных данных нет — причина зафиксирована"]],
+["6. КАРТА",[
+"Точка дома установлена корректно","Отметка оператора проверена","Дом находится в правильном месте","Контур / секции соответствуют исходнику"]],
+["7. ПРЕМОДЕРАЦИЯ — ИЗОБРАЖЕНИЯ",[
+"Все необходимые изображения загружены","Правильные категории","Фото относятся к нужному ЖК / корпусу","Нет дублей","Формат JPEG / PNG","Размер соответствует требованиям","Нет пальцев / засветов / рамок","Нет рекламы, телефонов, QR-кодов, сайтов, ссылок","Проверен водяной знак застройщика","Главное фото соответствует требованиям"]],
+["8. ДОКУМЕНТЫ",[
+"Документы относятся к нужному объекту","Правильные категории","Документы читаемые","Актуальные версии","Корректные названия","Разрешение на строительство — корректно","Проектная декларация — корректно","Разрешение на ввод — корректно","Земельные / прочие документы — при наличии"]],
+["9. ОНЛАЙН / ФИНАЛ",[
+"Данные после синхронизации сохранились","ЖК / корпус корректные","Карта и точка корректные","Планировки корректные","Нумерация корректная","Площади / комнаты корректные","Статусы корректные","Цены корректные","Роза ветров корректная","Фото отображаются корректно","Документы отображаются корректно","Все замечания исправлены"]]
+];
+const root=document.getElementById("checklist");
+groups.forEach((group,gi)=>{
+  const section=document.createElement("section");
+  const heading=document.createElement("h2"); heading.textContent=group[0]; section.appendChild(heading);
+  group[1].forEach((item,ii)=>{
+    const label=document.createElement("label"); label.className="item";
+    const input=document.createElement("input"); input.type="checkbox"; input.id=`c-${gi}-${ii}`;
+    input.addEventListener("change",update);
+    const span=document.createElement("span"); span.textContent=item;
+    label.append(input,span); section.appendChild(label);
+  });
+  root.appendChild(section);
+});
+function update(){
+ const all=[...document.querySelectorAll('input[type="checkbox"]')];
+ const done=all.filter(x=>x.checked).length;
+ document.getElementById("count").textContent=`${done} из ${all.length}`;
+ document.getElementById("bar").style.width=(done/all.length*100)+"%";
+}
+document.getElementById("reset").addEventListener("click",()=>{
+ document.querySelectorAll('input[type="checkbox"]').forEach(x=>x.checked=false); update(); window.scrollTo({top:0,behavior:"smooth"});
+});
+document.getElementById("print").addEventListener("click",()=>window.print());
+update();
+</script>
+</body>
+</html>
